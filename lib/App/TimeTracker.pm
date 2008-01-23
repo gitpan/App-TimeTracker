@@ -3,7 +3,7 @@ package App::TimeTracker;
 use 5.010;
 use warnings;
 use strict;
-use version; our $VERSION = version->new('0.06');
+use version; our $VERSION = version->new('0.07');
 
 =head1 NAME
 
@@ -11,7 +11,9 @@ App::TimeTracker - Track time spend on projects from the commandline
 
 =head1 SYNOPSIS
 
-App::TimeTracker tracks time spend on various projects in simple flat file.
+App::TimeTracker tracks time spend on various projects in a SQLite DB.
+
+see C<perldoc tracker> for a convenient frontend.
 
 =cut
 
@@ -54,7 +56,7 @@ sub global_opts {
         [ "start=s",  "start time"],
         [ "stop=s",   "stop time"],
         [ 'file|f=s' => "data file", 
-            {default=>catfile( File::HomeDir->my_home, '.App::TimeTracker', 'timetracker.db' ),} ],
+            {default=>catfile( File::HomeDir->my_home, '.TimeTracker', 'timetracker.db' ),} ],
     );
 }
 
