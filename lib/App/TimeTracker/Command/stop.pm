@@ -2,22 +2,25 @@ package App::TimeTracker::Command::stop;
 use 5.010;
 use strict;
 use warnings;
-use base qw(App::Cmd::Command App::TimeTracker);
+use App::TimeTracker -command;
+use base qw(App::TimeTracker);
 
-sub usage_desc { "%c stop %o" }
-
-sub opt_spec { 
-    my @args=App::TimeTracker::global_opts(@_);
-    push(@args,['svn'=>'enable svn autocommit after stop']);
-    return @args;
-}
-
-sub validate_args { App::TimeTracker::global_validate(@_) }
+sub usage_desc {"%c stop %o"}
 
 sub run {
-    my ($self, $opt, $args) = @_;
+    my ( $self, $opt, $args ) = @_;
 
-    $self->stop;
+    my $stopped
+        = App::TimeTracker::Task->stop_current( $self->app->storage_location,
+        $opt->{stop} || $self->now );
+    if ($stopped) {
+        say "worked "
+            . $stopped->get_printable_interval( $stopped->start,
+            $stopped->stop );
+    }
+    else {
+        say "Not working on anything...";
+    }
 }
 
 q{Listening to:

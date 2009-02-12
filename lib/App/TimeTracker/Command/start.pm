@@ -2,58 +2,51 @@ package App::TimeTracker::Command::start;
 use 5.010;
 use strict;
 use warnings;
-use base qw(App::Cmd::Command App::TimeTracker);
+use App::TimeTracker -command;
+use base qw(App::TimeTracker);
 
-sub usage_desc { "%c start %o task [tags]" }
-
-sub opt_spec { return App::TimeTracker::global_opts(@_) }
-
-sub validate_args { return App::TimeTracker::global_validate(@_) }
+sub usage_desc {"%c start %o task [tags]"}
 
 sub run {
-    my ($self, $opt, $args) = @_;
+    my ( $self, $opt, $args ) = @_;
 
-    my $project_name=shift(@$args);
-    X::BadParams->throw("No project specified") unless $project_name;
-    my $schema=$self->schema;
+    my $project = shift(@$args);
+    ATTX::BadParams->throw("No project specified") unless $project;
 
     # check if we already know this task
-    my $project=$schema->resultset('Project')->find($project_name,{key=>'name'});
-    if (!$project) {
-        say "'$project_name' is not among the current list of projects, add it? (y|n) ";
+    unless ( $self->app->projects->list->{$project} ) {
+        say
+            "'$project' is not among the current list of projects, add it? (y|n) ";
         my $prompt = <STDIN>;
         chomp($prompt);
         unless ( $prompt =~ /^y/i ) {
             say "Aborting...";
             exit;
         }
-        $project=$schema->resultset('Project')->create({
-            name=>$project_name,    
-        });
+
+        $self->app->projects->add($project)
+            ->write( $self->app->storage_location );
     }
 
     # stop last active task
-    $self->stop($self->now);
+    my $stopped
+        = App::TimeTracker::Task->stop_current( $self->app->storage_location,
+        $opt->{start} || $self->now );
+    if ($stopped) {
+        say "worked "
+            . $stopped->get_printable_interval( $stopped->start,
+            $stopped->stop );
 
-    my $start=$opt->{start};
+    }
 
     # start new task
-    my $task=$project->add_to_tasks({
-        start=>$start,
-        active=>1,
-    });
-
-    # add tags
-    my $tags=join(' ',@$args);
-    if ($tags) {
-        my @tags=split(/[,;]\s+/,$tags);
-        foreach my $tagname (@tags) {
-            my $tag=$schema->resultset('Tag')->find_or_create({
-                tag=>$tagname,
-            });
-            $task->add_to_tags($tag);
+    my $task = App::TimeTracker::Task->new( {
+            start   => $opt->{start}->epoch,
+            project => $project,
+            tags    => join( ' | ', @$args ),
+            basedir => $self->app->storage_location,
         }
-    }
+    )->set_current->write;
 }
 
 q{Listening to:

@@ -2,74 +2,54 @@ package App::TimeTracker::Command::worked;
 use 5.010;
 use strict;
 use warnings;
-use base qw(App::Cmd::Command App::TimeTracker);
+use App::TimeTracker -command;
+use base qw(App::TimeTracker);
 use DateTime;
+use DateTime::Format::ISO8601;
+use File::Find::Rule;
 
-sub usage_desc { "worked %o task" }
+sub usage_desc {"worked %o task"}
 
 sub opt_spec {
-    my @args=App::TimeTracker::global_opts(@_);
-    push(@args,
-        ['from=s'   => 'report start date/time'],
-        ['to=s'     => 'report stop date/time'],
-        ['this=s'   => 'report in this week/month/year'],
-        ['last=s'   => 'report in last week/month/year'],
-    );
-    return @args;
+    return shift->opt_spec_reports;
 }
 
-sub validate_args { return App::TimeTracker::global_validate(@_) }
-
 sub run {
-    my ($self, $opt, $args) = @_;
+    my ( $self, $opt, $args ) = @_;
 
-    my $project_name=shift(@$args);
-    my $tag_name=shift(@$args);
-    my $project=$self->schema->resultset('Project')->find($project_name,{key=>'name'});
-    X::BadData->throw("No such project: $project_name") unless $project;
-    my $dbh=$self->schema->storage->dbh;
+    my $project = $opt->{project};
+    my $tag     = $opt->{tag};
+    my $tasks   = $self->find_tasks($opt);
 
-    my ($sql_from, $sql_to)=($opt->{from}||'',$opt->{to}||'');
-    if (my $this = $opt->{this}) {
-        my $from=DateTime->now->truncate(to=>$this);        
-        my $to=$from->clone->add($this.'s'=>1);
-        $sql_from   = $from->ymd('-');
-        $sql_to     = $to->ymd('-');
-    }
-    elsif (my $last = $opt->{last}) {
-        my $from=DateTime->now->truncate(to=>$last)->subtract($last.'s'=>1);        
-        my $to=$from->clone->add($last.'s'=>1);
-        $sql_from   = $from->ymd('-');
-        $sql_to     = $to->ymd('-');
-    }
-    $sql_from="AND task.start > '$sql_from' " if $sql_from;
-    $sql_to="AND task.stop < '$sql_to' " if $sql_to;
+    my $total;
+    my $still_active = 0;
+    foreach my $file ( sort @$tasks ) {
+        my $task = App::TimeTracker::Task->read($file);
 
-    my $sum; my $current_sum;
-    if ($tag_name) {
-        $tag_name='%'.$tag_name.'%';
-        $sum=$dbh->selectrow_array("select sum(strftime('%s',stop) - strftime('%s',start)) from task,project,tag,task_tag where task.project=project.id AND task_tag.task=task.id AND task_tag.tag=tag.id AND task.active=0 AND project.id=? AND tag.tag like ? $sql_from $sql_to",undef,$project->id,$tag_name);
-        $current_sum=$dbh->selectrow_array("select sum(strftime('%s','now') - strftime('%s',start)) from task,project,tag,task_tag where task.project=project.id AND task_tag.task=task.id AND task_tag.tag=tag.id AND task.active=1 AND project.id=? AND tag.tag like ? $sql_from $sql_to",undef,$project->id,$tag_name);
+        if ($tag) {
+            next unless $task->tags =~ /$tag/;
+        }
+        $still_active = $task->is_active;
 
-        
-    }
-    else {
-        $tag_name='';
-        $sum=$dbh->selectrow_array("select sum(strftime('%s',stop) - strftime('%s',start)) from task,project where task.project=project.id AND task.active=0 AND project.id=? $sql_from $sql_to",undef,$project->id);
-        my $current_sum=$dbh->selectrow_array("select sum(strftime('%s','now') - strftime('%s',start)) from task,project where task.project=project.id AND task.active=1 AND project.id=? $sql_from $sql_to",undef,$project->id);
+        $total
+            += (
+            $task->is_active ? $self->app->now->epoch : $task->stop->epoch )
+            - $task->start->epoch;
+        say join( " ", $task->project, $task->start, $task->stop, $total )
+            if $opt->{verbose};
     }
 
-    if ($current_sum) {
-        say "You're still working on $project_name $tag_name at the moment!";
-        $sum+=$current_sum;
-    }
-
-    if ($sum) {
-        say "worked ".$self->beautify_seconds($sum)." on $project_name $tag_name"; 
+    my $project_out = ( $project ? $project : 'all projects' )
+        . ( $tag ? " ($tag)" : '' );
+    if ($total) {
+        say "You're still working on $project_out at the moment!"
+            if $still_active;
+        say "worked "
+            . App::TimeTracker::Task->beautify_seconds($total)
+            . " on $project_out";
     }
     else {
-        say "didn't work on $project_name at all!";
-
+        say "Did not work on $project_out";
     }
 }
 

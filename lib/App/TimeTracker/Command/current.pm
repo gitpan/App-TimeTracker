@@ -2,21 +2,20 @@ package App::TimeTracker::Command::current;
 use 5.010;
 use strict;
 use warnings;
-use base qw(App::Cmd::Command App::TimeTracker);
+use App::TimeTracker -command;
+use base qw(App::TimeTracker);
 
-sub usage_desc { "%c current %o" }
-
-sub opt_spec { return App::TimeTracker::global_opts(@_) }
-
-sub validate_args { return App::TimeTracker::global_validate(@_) }
+sub usage_desc {"%c current %o"}
 
 sub run {
-    my ($self, $opt, $args) = @_;
+    my ( $self, $opt, $args ) = @_;
 
-    my $active=$self->schema->resultset('Task')->find(1,{key=>'active'});
-    if ($active) {
-        my $interval=$self->get_printable_interval($active,undef,$self->now);
-        say "working $interval";
+    my $current
+        = App::TimeTracker::Task->get_current( $self->app->storage_location );
+
+    if ($current) {
+        say "working "
+            . $current->get_printable_interval( undef, $self->now );
     }
     else {
         say "Currently not working on anything...";

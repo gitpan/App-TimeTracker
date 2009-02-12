@@ -1,6 +1,6 @@
 ---
 name: App-TimeTracker
-version: 0.08
+version: 0.20
 author:
   - 'Thomas Klausner <domm@cpan.org>'
 abstract: Track time spend on projects from the commandline
@@ -10,19 +10,23 @@ resources:
 requires:
   App::Cmd: 0.012
   Class::Accessor: 0.31
-  DBD::SQLite: 1.14
-  DBIx::Class: 0.08008
   DateTime: 0.41
+  DateTime::Format::ISO8601: 0.06
   DateTime::Format::Strptime: 1.0702
   Exception::Class: 1.23
   File::HomeDir: 0.67
 build_requires:
   Test::More: 0
+  Test::Most: 0
   Test::NoWarnings: 0.084
 provides:
   App::TimeTracker:
     file: lib/App/TimeTracker.pm
-    version: 0.08
+    version: 0.20
+  App::TimeTracker::Command:
+    file: lib/App/TimeTracker/Command.pm
+  App::TimeTracker::Command::convert_to_0_20:
+    file: lib/App/TimeTracker/Command/convert_to_0_20.pm
   App::TimeTracker::Command::current:
     file: lib/App/TimeTracker/Command/current.pm
   App::TimeTracker::Command::report:
@@ -31,19 +35,17 @@ provides:
     file: lib/App/TimeTracker/Command/start.pm
   App::TimeTracker::Command::stop:
     file: lib/App/TimeTracker/Command/stop.pm
+  App::TimeTracker::Command::sync:
+    file: lib/App/TimeTracker/Command/sync.pm
   App::TimeTracker::Command::worked:
     file: lib/App/TimeTracker/Command/worked.pm
-  App::TimeTracker::Schema:
-    file: lib/App/TimeTracker/Schema.pm
-  App::TimeTracker::Schema::Project:
-    file: lib/App/TimeTracker/Schema/Project.pm
-  App::TimeTracker::Schema::Tag:
-    file: lib/App/TimeTracker/Schema/Tag.pm
-  App::TimeTracker::Schema::Task:
-    file: lib/App/TimeTracker/Schema/Task.pm
-  App::TimeTracker::Schema::TaskTag:
-    file: lib/App/TimeTracker/Schema/TaskTag.pm
-generated_by: Module::Build version 0.280801
+  App::TimeTracker::Exceptions:
+    file: lib/App/TimeTracker/Exceptions.pm
+  App::TimeTracker::Projects:
+    file: lib/App/TimeTracker/Projects.pm
+  App::TimeTracker::Task:
+    file: lib/App/TimeTracker/Task.pm
+generated_by: Module::Build version 0.31012
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html
   version: 1.2
