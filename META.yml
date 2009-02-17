@@ -1,6 +1,6 @@
 ---
 name: App-TimeTracker
-version: 0.20
+version: 0.21
 author:
   - 'Thomas Klausner <domm@cpan.org>'
 abstract: Track time spend on projects from the commandline
@@ -22,7 +22,7 @@ build_requires:
 provides:
   App::TimeTracker:
     file: lib/App/TimeTracker.pm
-    version: 0.20
+    version: 0.21
   App::TimeTracker::Command:
     file: lib/App/TimeTracker/Command.pm
   App::TimeTracker::Command::convert_to_0_20:
