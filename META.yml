@@ -1,51 +1,53 @@
 ---
-name: App-TimeTracker
-version: 0.21
+abstract: 'Track time spend on projects from the commandline'
 author:
   - 'Thomas Klausner <domm@cpan.org>'
-abstract: Track time spend on projects from the commandline
-license: perl
-resources:
-  license: http://dev.perl.org/licenses/
-requires:
-  App::Cmd: 0.012
-  Class::Accessor: 0.31
-  DateTime: 0.41
-  DateTime::Format::ISO8601: 0.06
-  DateTime::Format::Strptime: 1.0702
-  Exception::Class: 1.23
-  File::HomeDir: 0.67
 build_requires:
+  File::Copy::Recursive: 0
+  File::Temp: 0
+  IO::Capture::Stdout: 0
+  Module::Build: 0.3601
+  Test::File: 0
   Test::More: 0
   Test::Most: 0
-  Test::NoWarnings: 0.084
-provides:
-  App::TimeTracker:
-    file: lib/App/TimeTracker.pm
-    version: 0.21
-  App::TimeTracker::Command:
-    file: lib/App/TimeTracker/Command.pm
-  App::TimeTracker::Command::convert_to_0_20:
-    file: lib/App/TimeTracker/Command/convert_to_0_20.pm
-  App::TimeTracker::Command::current:
-    file: lib/App/TimeTracker/Command/current.pm
-  App::TimeTracker::Command::report:
-    file: lib/App/TimeTracker/Command/report.pm
-  App::TimeTracker::Command::start:
-    file: lib/App/TimeTracker/Command/start.pm
-  App::TimeTracker::Command::stop:
-    file: lib/App/TimeTracker/Command/stop.pm
-  App::TimeTracker::Command::sync:
-    file: lib/App/TimeTracker/Command/sync.pm
-  App::TimeTracker::Command::worked:
-    file: lib/App/TimeTracker/Command/worked.pm
-  App::TimeTracker::Exceptions:
-    file: lib/App/TimeTracker/Exceptions.pm
-  App::TimeTracker::Projects:
-    file: lib/App/TimeTracker/Projects.pm
-  App::TimeTracker::Task:
-    file: lib/App/TimeTracker/Task.pm
-generated_by: Module::Build version 0.31012
+  Test::Trap: 0
+configure_requires:
+  Module::Build: 0.3601
+dynamic_config: 0
+generated_by: 'Dist::Zilla version 4.200014, CPAN::Meta::Converter version 2.110440'
+license: perl
 meta-spec:
-  url: http://module-build.sourceforge.net/META-spec-v1.2.html
-  version: 1.2
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: App-TimeTracker
+requires:
+  Carp: 0
+  Data::Dumper: 0
+  DateTime: 0
+  DateTime::Format::Duration: 0
+  DateTime::Format::ISO8601: 0
+  Digest::SHA1: 0
+  File::Copy: 0
+  File::Find::Rule: 0
+  File::HomeDir: 0
+  Git::Repository: 0
+  Hash::Merge: 0
+  JSON::XS: 0
+  LWP::UserAgent: 0
+  Moose: 0
+  Moose::Role: 0
+  Moose::Util::TypeConstraints: 0
+  MooseX::Getopt: 0
+  MooseX::Storage: 0
+  MooseX::Storage::Format::JSONpm: 0
+  MooseX::Types::Path::Class: 0
+  Path::Class: 0
+  Path::Class::Iterator: 0
+  RT::Client::REST: 0
+  RT::Client::REST::Ticket: 0
+  Try::Tiny: 0
+  Unicode::Normalize: 0
+  User::pwent: 0
+  namespace::autoclean: 0
+  perl: 5.010
+version: 2.008

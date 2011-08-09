@@ -1,60 +1,138 @@
 package App::TimeTracker;
-
-use 5.010;
-use warnings;
 use strict;
-use version; our $VERSION = version->new('0.21');
+use warnings;
+use 5.010;
 
-=head1 NAME
+our $VERSION = "2.008";
+# ABSTRACT: Track time spend on projects from the commandline
 
-App::TimeTracker - Track time spend on projects from the commandline
+use App::TimeTracker::Data::Task;
 
-=head1 SYNOPSIS
-
-App::TimeTracker tracks time spend on various projects in a SQLite DB.
-
-see C<perldoc tracker> for a convenient frontend.
-
-=cut
-
-use App::Cmd::Setup -app;
-use base qw(Class::Accessor);
-use App::TimeTracker::Task;
-use App::TimeTracker::Projects;
-use App::TimeTracker::Exceptions;
 use DateTime;
-use DateTime::Format::Strptime;
-use File::Spec::Functions qw(splitpath catfile catdir);
-use File::HomeDir;
-use Getopt::Long;
+use Moose;
+use Moose::Util::TypeConstraints;
+use Path::Class::Iterator;
+use MooseX::Storage::Format::JSONpm;
 
-__PACKAGE__->mk_accessors(qw(opts projects _old_data _schema));
+our $HOUR_RE = qr/(?<hour>[012]?\d)/;
+our $MINUTE_RE = qr/(?<minute>[0-5]?\d)/;
+our $DAY_RE = qr/(?<day>[0123]?\d)/;
+our $MONTH_RE = qr/(?<month>[01]?\d)/;
+our $YEAR_RE = qr/(?<year>2\d{3})/;
 
-=head1 METHODS
+with qw(
+    MooseX::Getopt
+);
 
-=cut
+subtype 'TT::DateTime' => as class_type('DateTime');
+subtype 'TT::RT' => as 'Int';
 
-=head3 new
+coerce 'TT::RT'
+    => from 'Str'
+    => via {
+    my $raw = $_;
+    $raw=~s/\D//g;
+    return $raw;
+};
 
-    my $tracker = App::TimeTracker->new;
+coerce 'TT::DateTime'
+    => from 'Str'
+    => via {
+    my $raw = $_;
+    my $dt = DateTime->now;
+    $dt->set_time_zone('local');
 
-Initiate a new tracker object.
+    given ($raw) {
+        when(/^ $HOUR_RE : $MINUTE_RE $/x) { # "13:42"
+            $dt = DateTime->today;
+            $dt->set(hour=>$+{hour}, minute=>$+{minute});
+        }
+        when(/^ $YEAR_RE [-.]? $MONTH_RE [-.]? $DAY_RE $/x) { # "2010-02-26"
+            $dt = DateTime->today;
+            $dt->set(year => $+{year}, month=>$+{month}, day=>$+{day});
+        }
+        when(/^ $YEAR_RE [-.]? $MONTH_RE [-.]? $DAY_RE \s+ $HOUR_RE : $MINUTE_RE $/x) { # "2010-02-26 12:34"
+            $dt = DateTime->new(year => $+{year}, month=>$+{month}, day=>$+{day}, hour=>$+{hour}, minute=>$+{minute});
+        }
+        when(/^ $DAY_RE [-.]? $MONTH_RE [-.]? $YEAR_RE $/x) { # "26-02-2010"
+            $dt = DateTime->today;
+            $dt->set(year => $+{year}, month=>$+{month}, day=>$+{day});
+        }
+        when(/^ $DAY_RE [-.]? $MONTH_RE [-.]? $YEAR_RE \s $HOUR_RE : $MINUTE_RE $/x) { # "26-02-2010 12:34"
+            $dt = DateTime->new(year => $+{year}, month=>$+{month}, day=>$+{day}, hour=>$+{hour}, minute=>$+{minute});
+        }
+        default {
+            confess "Invalid date format '$raw'";
+        }
+    }
+    return $dt;
+};
 
-Provided by Class::Accessor
+MooseX::Getopt::OptionTypeMap->add_option_type_to_map(
+    'TT::DateTime' => '=s',
+);
+MooseX::Getopt::OptionTypeMap->add_option_type_to_map(
+    'TT::RT' => '=i',
+);
 
-=cut
+no Moose::Util::TypeConstraints;
 
-=head2 Helper Methods
+has 'home' => (
+    is=>'ro',
+    isa=>'Path::Class::Dir',
+    traits => [ 'NoGetopt' ],
+    required=>1,
+);
+has 'config' => (
+    is=>'ro',
+    isa=>'HashRef',
+    required=>1,
+    traits => [ 'NoGetopt' ],
+);
+has '_currentproject' => (
+    is=>'ro',
+    isa=>'Str',
+    traits => [ 'NoGetopt' ],
+);
 
-=cut
+has 'tags' => (
+    isa=>'ArrayRef',
+    is=>'ro',
+    traits  => ['Array'],
+    default=>sub {[]},
+    handles => {
+        insert_tag  => 'unshift',
+        add_tag  => 'push',
+    },
+    documentation => 'Tags [Multiple]',
+);
 
-=head3 now
+has '_current_command' => (
+    isa=>'Str',
+    is=>'rw',
+    traits => [ 'NoGetopt' ],
+);
 
-    my $now = $self->now;
+has '_current_task' => (
+    isa=>'App::TimeTracker::Data::Task',
+    is=>'rw',
+    traits => [ 'NoGetopt' ],
+);
 
-Wrapper around DateTime->now that also sets the timezone to local
+has '_previous_task' => (
+    isa=>'App::TimeTracker::Data::Task',
+    is=>'rw',
+    traits => [ 'NoGetopt' ],
+);
 
-=cut
+sub run {
+    my $self = shift;
+    my $command = 'cmd_'.($self->extra_argv->[0] || 'missing');
+
+    $self->cmd_commands unless $self->can($command);
+    $self->_current_command($command);
+    $self->$command;
+}
 
 sub now {
     my $dt = DateTime->now();
@@ -62,224 +140,95 @@ sub now {
     return $dt;
 }
 
-=head3 storage_location
+sub beautify_seconds {
+    my ( $self, $s ) = @_;
+    return '0' unless $s;
+    my ( $m, $h )= (0, 0);
 
-    my $dir = $self->storage_location
-
-Returns the path to the dir containing the stored tasks. Currently hardcoded to File::HomeDir plus F<.TimeTracker>.
-
-=cut
-
-sub storage_location {
-    my $self = shift;
-
-    if ( $INC{'Test/More.pm'} ) {
-        return catdir('t/data');
+    if ( $s >= 60 ) {
+        $m = int( $s / 60 );
+        $s = $s - ( $m * 60 );
     }
-    else {
-        return catdir( File::HomeDir->my_home, '.TimeTracker' );
+    if ( $m && $m >= 60 ) {
+        $h = int( $m / 60 );
+        $m = $m - ( $h * 60 );
     }
+    return sprintf("%02d:%02d:%02d",$h,$m,$s);
 }
 
-=head3 file
+sub find_task_files {
+    my ($self, $args) = @_;
 
-    my $path = $self->file( 'path/to/some/file' );
-    my $path = $self->file( qw( path to some file) );
+    my ($cmp_from, $cmp_to);
 
-Prepends L<storage_location> to the passed file path.
-
-=cut
-
-sub file {
-    my $self = shift;
-    return catfile( $self->storage_location, @_ );
-}
-
-=head3 parse_datetime 
-
-    my $dt = $self->parse_datetime("1245");
-    my $dt = $self->parse_datetime("0226-1245");
-
-Convert a simple time / datetime into a DateTime object
-
-Input can be a string containing Hour and Minute ("1245"), which will 
-use todays date. Or a string containing Month Day followed by Hour & 
-Minute (seperated by _ or -)
-
-=cut
-
-sub parse_datetime {
-    my ( $self, $datetime ) = @_;
-    return $self->now unless $datetime;
-
-    my $n = $self->now;
-
-    my $date;
-    eval {
-        if ( $datetime =~ /^(?<hour>\d\d):?(?<minute>\d\d)$/ )
-        {
-            $date = DateTime->new(
-                year      => $n->year,
-                month     => $n->month,
-                day       => $n->day,
-                hour      => $+{hour},
-                minute    => $+{minute},
-                second    => 0,
-                time_zone => 'local',
-            );
-        }
-        elsif (
-            $datetime =~ /
-            (?<month>\d\d)\.?(?<day>\d\d)
-            [-_]
-            (?<hour>\d\d):?(?<minute>\d\d)
-            /x
-            )
-        {
-            $date = DateTime->new(
-                year      => $n->year,
-                month     => $+{month},
-                day       => $+{day},
-                hour      => $+{hour},
-                minute    => $+{minute},
-                second    => 0,
-                time_zone => 'local',
-            );
-        }
-    };
-    if ($@) {
-        X::BadDate->throw("Cannot parse $datetime into a date: $@");
+    if (my $from = $args->{from}) {
+        my $to = $args->{to} || $self->now;
+        $to->set(hour=>23,minute=>59,second=>59) unless $to->hour;
+        $cmp_from = $from->strftime("%Y%m%d%H%M%S");
+        $cmp_to = $to->strftime("%Y%m%d%H%M%S");
     }
-    return $date;
-}
-
-=head3 get_from_to 
-
-parse --from and --to, returns strings suitable for L<find_tasks>
-
-=cut
-
-sub get_from_to {
-    my ( $self, $opt ) = @_;
-
-    my ( $from, $to );
-    if ( my $this = $opt->{this} ) {
-        $from = DateTime->now->truncate( to => $this );
-        $to = $from->clone->add( $this . 's' => 1 );
+    my $projects;
+    if ($args->{projects}) {
+        $projects = join('|',@{$args->{projects}});
     }
-    elsif ( my $last = $opt->{last} ) {
-        $from = DateTime->now->truncate( to => $last )
-            ->subtract( $last . 's' => 1 );
-        $to = $from->clone->add( $last . 's' => 1 );
-    }
-    elsif ( $opt->{from} && $opt->{to} ) {
-        $from = DateTime::Format::ISO8601->parse_datetime( $opt->{from} );
-        $to   = DateTime::Format::ISO8601->parse_datetime( $opt->{to} );
-    }
-    elsif ( $opt->{from} ) {
-        $from = DateTime::Format::ISO8601->parse_datetime( $opt->{from} );
-        $to   = $self->app->now;
-    }
-    elsif ( $opt->{to} ) {
-        $from = $self->app->now->truncate( to => 'year' );
-        $to = DateTime::Format::ISO8601->parse_datetime( $opt->{to} );
-    }
-    else {
-        say "You need to specify some date limits!";
-        exit;
-    }
-    return ( $from->ymd('') . $from->hms(''), $to->ymd('') . $to->hms('') );
-}
 
-=head3 find_tasks
+    my @found;
+    my $iterator = Path::Class::Iterator->new(
+        root => $self->home,
+    );
+    until ($iterator->done) {
+        my $file = $iterator->next;
+        next unless -f $file;
+        my $name = $file->basename;
+        next unless $name =~/\.trc$/;
 
-returns a list of filesnames (=tasks) that match the criteria specified on the commandline.
-
-=cut
-
-sub find_tasks {
-    my ( $self, $opt ) = @_;
-
-    my $project = $opt->{project};
-    our ( $from_cmp, $to_cmp ) = $self->get_from_to($opt);
-
-    my @files = File::Find::Rule->file()->name(qr/\.(done|current)$/)->exec(
-        sub {
-            my ($file) = @_;
+        if ($cmp_from) {
             $file =~ /(\d{8})-(\d{6})/;
             my $time = $1 . $2;
-            return 1 if $time >= $from_cmp;
+            next if $time < $cmp_from;
+            next if $time > $cmp_to;
         }
-        )->exec(
-        sub {
-            my ($file) = @_;
-            $file =~ /(\d{8})-(\d{6})/;
-            my $time = $1 . $2;
-            return 1 if $time <= $to_cmp;
-        }
-        )->in( $self->app->storage_location . '/' );
 
-    if ($project) {
-        @files = grep {/$project/} @files;
+        next if $projects && ! ($name ~~ /$projects/);
+
+        push(@found,$file);
     }
-
-    return \@files;
+    return sort @found;
 }
 
-# 1 is boring
-q{ listeing to:
-    Fat Freddys Drop: Based on a true story
-};
+1;
 
-__END__
+
+
+=pod
+
+=head1 NAME
+
+App::TimeTracker - Track time spend on projects from the commandline
+
+=head1 VERSION
+
+version 2.008
+
+=head1 CONTRIBUTORS
+
+Maros Kollar C<< <maros@cpan.org> >>, Klaus Ita C<< <klaus@worstofall.com> >>
 
 =head1 AUTHOR
 
-Thomas Klausner, C<< <domm at cpan.org> >>
+Thomas Klausner <domm@cpan.org>
 
-=head1 BUGS
+=head1 COPYRIGHT AND LICENSE
 
-Please report any bugs or feature requests to
-C<bug-timetracker at rt.cpan.org>, or through the web interface at
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=App::TimeTracker>.
-I will be notified, and then you'll automatically be notified of progress on
-your bug as I make changes.
+This software is copyright (c) 2011 by Thomas Klausner.
 
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-    perldoc App::TimeTracker
-
-You can also look for information at:
-
-=over 4
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/App::TimeTracker>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/App::TimeTracker>
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=App::TimeTracker>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/App::TimeTracker>
-
-=back
-
-=head1 ACKNOWLEDGEMENTS
-
-=head1 COPYRIGHT & LICENSE
-
-Copyright 2008 Thomas Klausner, all rights reserved.
-
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut
+
+
+__END__
+
+
+
