@@ -70,6 +70,13 @@
       }
    },
    "release_status" : "stable",
-   "version" : "2.008"
+   "resources" : {
+      "repository" : {
+         "type" : "git",
+         "url" : "git://github.com/domm/App-TimeTracker.git",
+         "web" : "http://github.com/domm/App-TimeTracker"
+      }
+   },
+   "version" : "2.009"
 }
 

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use 5.010;
 
-our $VERSION = "2.008";
+our $VERSION = "2.009";
 # ABSTRACT: Track time spend on projects from the commandline
 
 use App::TimeTracker::Data::Task;
@@ -208,7 +208,11 @@ App::TimeTracker - Track time spend on projects from the commandline
 
 =head1 VERSION
 
-version 2.008
+version 2.009
+
+=head1 SYNOPSIS
+
+Backend for the C<tracker> command. See C<man tracker> and/or C<perldoc tracker> for details.
 
 =head1 CONTRIBUTORS
 
@@ -229,6 +233,4 @@ the same terms as the Perl 5 programming language system itself.
 
 
 __END__
-
-
 

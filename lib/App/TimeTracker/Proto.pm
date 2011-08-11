@@ -103,10 +103,12 @@ sub load_config {
     my ($self, $dir) = @_;
     $dir ||= Path::Class::Dir->new->absolute;
     my $config={};
+    my @used_config_files;
 
     WALKUP: while (1) {
         my $config_file = $dir->file('.tracker.json');
         if (-e $config_file) {
+            push(@used_config_files, $config_file->stringify);
             $config = merge($config, $self->slurp_config($config_file));
 
             my @path = $config_file->parent->dir_list;
@@ -122,9 +124,11 @@ sub load_config {
     $self->_write_config_file_locations;
 
     if (-e $self->global_config_file) {
+        push(@used_config_files, $self->global_config_file->stringify);
         $config = merge($config, $self->slurp_config( $self->global_config_file ));
     }
-    
+    $config->{_used_config_files} = \@used_config_files;
+
     unless ($self->has_project) {
         $self->find_project_in_argv;
     }
@@ -150,7 +154,7 @@ sub find_project_in_argv {
 sub _write_config_file_locations {
     my $self = shift;
     my $fh = $self->home->file('projects.json')->openw;
-    print $fh encode_json($self->config_file_locations);
+    print $fh $self->json_decoder->encode($self->config_file_locations);
     close $fh;
 }
 
@@ -178,7 +182,7 @@ App::TimeTracker::Proto - App::TimeTracker Proto Class
 
 =head1 VERSION
 
-version 2.008
+version 2.009
 
 =head1 DESCRIPTION
 

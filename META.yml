@@ -50,4 +50,6 @@ requires:
   User::pwent: 0
   namespace::autoclean: 0
   perl: 5.010
-version: 2.008
+resources:
+  repository: git://github.com/domm/App-TimeTracker.git
+version: 2.009

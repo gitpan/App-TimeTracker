@@ -234,6 +234,21 @@ EOCONFIG
     say "Set up this directory for time-tracking via file .tracker.json";
 }
 
+sub cmd_plugins {
+    my $self = shift;
+
+    my $base = Path::Class::file($INC{'App/TimeTracker/Command/Core.pm'})->parent;
+    my @hits;
+    while (my $file = $base->next) {
+        next unless -f $file;
+        next if $file->basename eq 'Core.pm';
+        my $plugin = $file->basename;
+        $plugin =~s/\.pm$//;
+        push(@hits, $plugin);
+    }
+    say "Installed plugins:\n  ".join(', ',@hits);
+}
+
 sub cmd_commands {
     my $self = shift;
 
@@ -358,7 +373,7 @@ App::TimeTracker::Command::Core - App::TimeTracker Core commands
 
 =head1 VERSION
 
-version 2.008
+version 2.009
 
 =head1 CORE COMMANDS
 
@@ -554,6 +569,14 @@ B<Options:> none
     ~/perl/Your-Project$ tracker show_config
 
 Dump the config that's valid for the current directory. Might be handy when setting up plugins etc.
+
+B<Options:> none
+
+=head2 plugins
+
+    ~/perl/Your-Project$ tracker plugins
+
+List all installed plugins (i.e. stuff in C<App::TimeTracker::Command::*)
 
 B<Options:> none
 
