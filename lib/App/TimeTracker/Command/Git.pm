@@ -16,7 +16,7 @@ has 'branch' => (
 has 'merge' => (
     is=>'ro',
     isa=>'Bool', 
-    documentation=>'Git: Merge after stoping'
+    documentation=>'Git: Merge after stopping'
 );
 has 'no_branch' => (
     is=>'ro',
@@ -89,7 +89,7 @@ App::TimeTracker::Command::Git - App::TimeTracker Git plugin
 
 =head1 VERSION
 
-version 2.009
+version 2.010
 
 =head1 DESCRIPTION
 
@@ -102,13 +102,11 @@ See http://nvie.com/posts/a-successful-git-branching-model/ for a good example o
 
 =head1 CONFIGURATION
 
-=over
+=head2 plugins
 
-=item * Add C<Git> to the list of plugins. 
+Add C<Git> to the list of plugins. 
 
-=item * Of course this plugin will only work if the current project is in fact a git repo...
-
-=back
+Of course this plugin will only work if the current project is in fact a git repo...
 
 =head1 NEW COMMANDS
 
@@ -118,11 +116,9 @@ none
 
 =head2 start, continue
 
-B<New Options>:
+=head3 New Options
 
-=over
-
-=item --branch cool_new_feature
+=head4 --branch cool_new_feature
 
     ~/perl/Your-Project$ tracker start --branch cool_new_feature    
     Started working on Your-Project at 13:35:53
@@ -136,21 +132,17 @@ If the branch already existed, it might be out of sync with master. In
 this case you should do something like C<git merge master> before
 starting to work.
 
-=item --nobranch (--no_branch)
+=head4 --nobranch (--no_branch)
 
     ~/perl/Your-Project$ tracker start --branch another_featur --no_branch
 
 Do not create a new branch, even if C<--branch> is set. This is only useful if another plugin (eg <RT>) automatically sets C<--branch>.
 
-=back
-
 =head2 stop
 
-B<New Options>:
+=head3 New Options
 
-=over
-
-=item --merge
+=head4 --merge
 
     ~/perl/Your-Project$ tracker stop --merge
 
@@ -159,8 +151,6 @@ After, stopping, merge the current branch back into C<master> (using C<--no-ff>.
 TODO: Turn this into a string option, which should be the name of the
 branch we want to merge into. Default to C<master> (or something set
 in config..)
-
-=back
 
 =head1 AUTHOR
 

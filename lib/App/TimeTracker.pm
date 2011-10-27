@@ -3,8 +3,8 @@ use strict;
 use warnings;
 use 5.010;
 
-our $VERSION = "2.009";
-# ABSTRACT: Track time spend on projects from the commandline
+our $VERSION = "2.010";
+# ABSTRACT: time tracking for impatient and lazy command line lovers
 
 use App::TimeTracker::Data::Task;
 
@@ -13,6 +13,7 @@ use Moose;
 use Moose::Util::TypeConstraints;
 use Path::Class::Iterator;
 use MooseX::Storage::Format::JSONpm;
+use JSON::XS;
 
 our $HOUR_RE = qr/(?<hour>[012]?\d)/;
 our $MINUTE_RE = qr/(?<minute>[0-5]?\d)/;
@@ -26,6 +27,7 @@ with qw(
 
 subtype 'TT::DateTime' => as class_type('DateTime');
 subtype 'TT::RT' => as 'Int';
+subtype 'TT::Duration' => as enum([qw(day week month year)]);
 
 coerce 'TT::RT'
     => from 'Str'
@@ -89,9 +91,10 @@ has 'config' => (
     required=>1,
     traits => [ 'NoGetopt' ],
 );
-has '_currentproject' => (
+has '_current_project' => (
     is=>'ro',
     isa=>'Str',
+    predicate => 'has_current_project',
     traits => [ 'NoGetopt' ],
 );
 
@@ -169,7 +172,11 @@ sub find_task_files {
     }
     my $projects;
     if ($args->{projects}) {
-        $projects = join('|',@{$args->{projects}});
+        $projects = join('|',map {s/-/./g; $_} @{$args->{projects}});
+    }
+    my $tags;
+    if ($args->{tags}) {
+        $tags = join('|',@{$args->{tags}});
     }
 
     my @found;
@@ -189,11 +196,36 @@ sub find_task_files {
             next if $time > $cmp_to;
         }
 
-        next if $projects && ! ($name ~~ /$projects/);
+        next if $projects && ! ($name ~~ /$projects/i);
+
+        if ($tags) {
+            my $raw_content = $file->slurp;
+            next unless $raw_content =~ /$tags/i;
+        }
 
         push(@found,$file);
     }
     return sort @found;
+}
+
+sub project_tree {
+    my $self = shift;
+    my $file = $self->home->file('projects.json');
+    return unless -e $file && -s $file;
+    my $projects = decode_json($file->slurp);
+
+    my %tree;
+    while (my ($project,$location) = each %$projects) {
+        $tree{$project} //= {parent=>undef,childs=>{}};
+        my @parts = Path::Class::file($location)->parent->parent->dir_list;
+        foreach my $dir (@parts) {
+            if (my $parent = $projects->{$dir}) {
+                $tree{$project}->{parent} = $dir;
+                $tree{$dir}->{children}{$project}=1;
+            }
+        }
+    }
+    return \%tree;
 }
 
 1;
@@ -204,15 +236,15 @@ sub find_task_files {
 
 =head1 NAME
 
-App::TimeTracker - Track time spend on projects from the commandline
+App::TimeTracker - time tracking for impatient and lazy command line lovers
 
 =head1 VERSION
 
-version 2.009
+version 2.010
 
 =head1 SYNOPSIS
 
-Backend for the C<tracker> command. See C<man tracker> and/or C<perldoc tracker> for details.
+Backend for the C<tracker> command. See L<tracker> and/or C<perldoc tracker> for details.
 
 =head1 CONTRIBUTORS
 

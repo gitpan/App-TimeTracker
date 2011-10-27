@@ -4,6 +4,7 @@ use warnings;
 use 5.010;
 
 # ABSTRACT: App::TimeTracker RT plugin
+use App::TimeTracker::Utils qw(error_message);
 
 use Moose::Role;
 use RT::Client::REST;
@@ -11,9 +12,25 @@ use RT::Client::REST::Ticket;
 use Try::Tiny;
 use Unicode::Normalize;
 
-has 'rt' => (is=>'rw',isa=>'TT::RT',coerce=>1,documentation=>'RT: Ticket number', predicate => 'has_rt');
-has 'rt_client' => (is=>'ro',isa=>'RT::Client::REST',lazy_build=>1);
-has 'rt_ticket' => (is=>'ro',isa=>'Maybe[RT::Client::REST::Ticket]',lazy_build=>1);
+has 'rt' => (
+    is=>'rw',
+    isa=>'TT::RT',
+    coerce=>1,
+    documentation=>'RT: Ticket number', 
+    predicate => 'has_rt'
+);
+has 'rt_client' => (
+    is=>'ro',
+    isa=>'RT::Client::REST',
+    lazy_build=>1,
+    traits => [ 'NoGetopt' ],
+);
+has 'rt_ticket' => (
+    is=>'ro',
+    isa=>'Maybe[RT::Client::REST::Ticket]',
+    lazy_build=>1,
+    traits => [ 'NoGetopt' ],
+);
 
 sub _build_rt_ticket {
     my ($self) = @_;
@@ -28,7 +45,7 @@ sub _build_rt_client {
     my $config = $self->config->{rt};
     
     unless ($config) {
-        say "Please configure RT in your TimeTracker config";
+        error_message("Please configure RT in your TimeTracker config");
         exit;
     }
 
@@ -86,7 +103,7 @@ after 'cmd_start' => sub {
         $ticket->store();
     }
     catch {
-        say $_;    
+        error_message('Could not set RT owner and status: %s',$_);
     };
 };
 
@@ -154,7 +171,7 @@ App::TimeTracker::Command::RT - App::TimeTracker RT plugin
 
 =head1 VERSION
 
-version 2.009
+version 2.010
 
 =head1 DESCRIPTION
 
@@ -169,41 +186,37 @@ generate very nice branch names based on RT information.
 
 =head1 CONFIGURATION
 
-=over
+=head2 plugins
 
-=item * Add C<RT> to the list of plugins. 
+Add C<RT> to the list of plugins. 
 
-=item * add a hash named C<rt>, containing the following keys:
+=head2 rt
 
-=over
+add a hash named C<rt>, containing the following keys:
 
-=item * server [REQUIRED]
+=head3 server [REQUIRED]
 
 The server name RT is running on.
 
-=item * username [REQUIRED]
+=head3 username [REQUIRED]
 
 Username to connect with. As the password of this user might be distributed on a lot of computer, grant as little rights as needed.
 
-=item * password [REQUIRED]
+=head3 password [REQUIRED]
 
 Password to connect with.
 
-=item * timeout
+=head3 timeout
 
 Time in seconds to wait for an connection to be established. Default: 300 seconds (via RT::Client::REST)
 
-=item * set_owner_to
+=head3 set_owner_to
 
 If set, set the owner of the current ticket to the specified value during C<start>.
 
-=item * update_time_worked
+=head3 update_time_worked
 
 If set, store the time worked on this task also in RT.
-
-=back
-
-=back
 
 =head1 NEW COMMANDS
 
@@ -213,11 +226,7 @@ none
 
 =head2 start, continue
 
-B<New Options>:
-
-=over
-
-=item --rt
+=head3 --rt
 
     ~/perl/Your-Project$ tracker start --rt 1234
 
@@ -232,8 +241,6 @@ If C<--rt> is set to a valid ticket number:
 =item * if C<Git> is also used, determine a save branch name from the ticket number and subject, and change into this branch ("RT1234_rev_up_fluxcompensator")
 
 =item * set the owner of the ticket in RT (if C<set_owner_to> is set in config)
-
-=back
 
 =back
 

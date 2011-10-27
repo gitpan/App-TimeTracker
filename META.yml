@@ -1,5 +1,5 @@
 ---
-abstract: 'Track time spend on projects from the commandline'
+abstract: 'time tracking for impatient and lazy command line lovers'
 author:
   - 'Thomas Klausner <domm@cpan.org>'
 build_requires:
@@ -27,6 +27,7 @@ requires:
   DateTime::Format::Duration: 0
   DateTime::Format::ISO8601: 0
   Digest::SHA1: 0
+  Exporter: 0
   File::Copy: 0
   File::Find::Rule: 0
   File::HomeDir: 0
@@ -45,11 +46,16 @@ requires:
   Path::Class::Iterator: 0
   RT::Client::REST: 0
   RT::Client::REST::Ticket: 0
+  Scalar::Util: 0
+  Term::ANSIColor: 0
+  Text::Table: 0
   Try::Tiny: 0
   Unicode::Normalize: 0
   User::pwent: 0
   namespace::autoclean: 0
+  parent: 0
   perl: 5.010
 resources:
+  homepage: http://timetracker.plix.at
   repository: git://github.com/domm/App-TimeTracker.git
-version: 2.009
+version: 2.010

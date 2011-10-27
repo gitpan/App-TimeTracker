@@ -6,17 +6,24 @@ use 5.010;
 # ABSTRACT: App::TimeTracker Core commands
 
 use Moose::Role;
+use App::TimeTracker::Utils qw(now pretty_date error_message);
 use File::Copy qw(move);
 use File::Find::Rule;
 use Data::Dumper;
+use Text::Table;
 
 sub cmd_start {
     my $self = shift;
 
+    unless ($self->has_current_project) {
+        error_message("Could not find project\nUse --project or chdir into the project directory");
+        exit;
+    }
+
     $self->cmd_stop('no_exit');
     
     my $task = App::TimeTracker::Data::Task->new({
-        start=>$self->at || $self->now,
+        start=>$self->at || now(),
         project=>$self->project,
         tags=>$self->tags,
         description=>$self->description,
@@ -29,6 +36,11 @@ sub cmd_start {
 sub cmd_stop {
     my ($self, $dont_exit) = @_;
 
+    unless ($self->has_current_project) {
+        error_message("Could not find project\nUse --project or chdir into the project directory");
+        exit;
+    }
+
     my $task = App::TimeTracker::Data::Task->current($self->home);
     unless ($task) {
         return if $dont_exit;
@@ -37,7 +49,7 @@ sub cmd_stop {
     }
     $self->_previous_task($task);
 
-    $task->stop($self->at || $self->now);
+    $task->stop($self->at || now());
     $task->save($self->home);
     
     move($self->home->file('current')->stringify,$self->home->file('previous')->stringify);
@@ -49,11 +61,13 @@ sub cmd_current {
     my $self = shift;
     
     if (my $task = App::TimeTracker::Data::Task->current($self->home)) {
-        say "Working ".$task->_calc_duration($self->now)." on ".$task->say_project_tags;
+        say "Working ".$task->_calc_duration(now())." on ".$task->say_project_tags;
+        say 'Started at '. pretty_date($task->start);
     }
     elsif (my $prev = App::TimeTracker::Data::Task->previous($self->home)) {
         say "Currently not working on anything, but the last thing you worked on was:";
         say $prev->say_project_tags;
+        say 'Worked '.$prev->rounded_minutes.' minutes from '.pretty_date($prev->start).' till '.pretty_date($prev->stop);
     }
     else {
         say "Currently not working on anything, and I have no idea what you worked on earlier...";
@@ -90,7 +104,7 @@ sub cmd_continue {
     }
     elsif (my $prev = App::TimeTracker::Data::Task->previous($self->home)) {
         my $task = App::TimeTracker::Data::Task->new({
-            start=>$self->at || $self->now,
+            start=>$self->at || now(),
             project=>$prev->project,
             tags=>$prev->tags,
         });
@@ -106,9 +120,10 @@ sub cmd_worked {
     my $self = shift;
 
     my @files = $self->find_task_files({
-        from=>$self->from,
-        to=>$self->to,
-        projects=>$self->projects,
+        from     => $self->from,
+        to       => $self->to,
+        projects => $self->fprojects,
+        tags     => $self->ftags,
     });
 
     my $total=0;
@@ -120,13 +135,48 @@ sub cmd_worked {
     say $self->beautify_seconds($total);
 }
 
+sub cmd_list {
+    my $self = shift;
+
+    my @files = $self->find_task_files({
+        from     => $self->from,
+        to       => $self->to,
+        projects => $self->fprojects,
+        tags     => $self->ftags,
+    });
+
+    my $s=\' | ';
+    my $table = Text::Table->new(
+        "Project", $s, "Tag", $s, "Duration", $s, "Start", $s, "Stop", ($self->detail ? ( $s, "Seconds", $s, "Description", $s, "File"):()),
+    );
+
+    foreach my $file ( @files ) {
+        my $task = App::TimeTracker::Data::Task->load($file->stringify);
+        my $time = $task->seconds // $task->_build_seconds;
+
+        $table->add(
+            $task->project,
+            join(', ',@{$task->tags}),
+            $task->duration || 'working',
+            pretty_date($task->start),
+            pretty_date($task->stop),
+            ($self->detail ? ($time,$task->description_short,$file->stringify) : ()),
+        );
+    }
+
+    print $table->title;
+    print $table->rule('-','+');
+    print $table->body;
+}
+
 sub cmd_report {
     my $self = shift;
 
     my @files = $self->find_task_files({
-        from=>$self->from,
-        to=>$self->to,
-        projects=>$self->projects,
+        from     => $self->from,
+        to       => $self->to,
+        projects => $self->fprojects,
+        tags     => $self->ftags,
     });
 
     my $total = 0;
@@ -139,7 +189,7 @@ sub cmd_report {
         my $project = $task->project;
 
         if ($time >= 60*60*8) {
-            say "Found dubious trackfile: ".$file->basename;
+            say "Found dubious trackfile: ".$file->stringify;
             say "  Are you sure you worked ".$self->beautify_seconds($time)." on one task?";
         }
 
@@ -158,37 +208,46 @@ sub cmd_report {
                 $report->{$project}{'_untagged'} += $time;
             }
         }
-        if ($self->verbose) {
-            printf("%- 40s -> % 8s\n",$file->basename, $self->beautify_seconds($time));
-        }
     }
 
-# TODO: calc sum for parent(s)
-#    foreach my $project (keys %$report) {
-#        my $parent = $project_map->{$project}{parent};
-#        while ($parent) {
-#            $report->{$parent}{'_total'}+=$report->{$project}{'_total'} || 0;
-#            $report->{$parent}{$project} = $report->{$project}{'_total'} || 0;
-#            $parent = $project_map->{$parent}{parent};
-#        }
-#    }
+    my $projects = $self->project_tree;
+
+    foreach my $project (keys %$report) {
+        my $parent = $projects->{$project}{parent};
+        while ($parent) {
+            $report->{$parent}{'_total'}+=$report->{$project}{'_total'} || 0;
+            $parent = $projects->{$parent}{parent};
+        }
+    }
 
     my $padding='';
     my $tagpadding='   ';
-    foreach my $project (sort keys %$report) {
-        my $data = $report->{$project};
-        printf( $padding.$format, $project, $self->beautify_seconds( delete $data->{'_total'} ) );
-        printf( $padding.$tagpadding.$format, 'untagged', $self->beautify_seconds( delete $data->{'_untagged'} ) ) if $data->{'_untagged'};
+    foreach my $project (keys %$report) {
+        next if $projects->{$project}{parent};
+        $self->_print_report_tree($report, $projects, $project, $padding, $tagpadding);
+    }
+    
+    printf( $format, 'total', $self->beautify_seconds($total) );
+}
 
-        if ( $self->detail ) {
-            foreach my $tag ( sort { $data->{$b} <=> $data->{$a} } keys %{ $data } ) {
-                my $time = $data->{$tag};
-                printf( $padding.$tagpadding.$format, $tag, $self->beautify_seconds($time) );
-            }
+sub _print_report_tree {
+    my ($self, $report, $projects, $project, $padding, $tagpadding ) = @_;
+    my $data = $report->{$project};
+    return unless $data->{'_total'};
+
+    my $format="%- 20s % 12s\n";
+
+    printf( $padding.$format, substr($project,0,20), $self->beautify_seconds( delete $data->{'_total'} ) );
+    if ( $self->detail ) {
+        printf( $padding.$tagpadding.$format, 'untagged', $self->beautify_seconds( delete $data->{'_untagged'} ) ) if $data->{'_untagged'};
+        foreach my $tag ( sort { $data->{$b} <=> $data->{$a} } keys %{ $data } ) {
+            my $time = $data->{$tag};
+            printf( $padding.$tagpadding.$format, $tag, $self->beautify_seconds($time) );
         }
     }
-    #say '=' x 35;
-    printf( $format, 'total', $self->beautify_seconds($total) );
+    foreach my $child (keys %{$projects->{$project}{children}}) {
+        $self->_print_report_tree($report, $projects, $child, $padding.'   ', $tagpadding);
+    }
 }
 
 sub cmd_recalc_trackfile {
@@ -199,7 +258,7 @@ sub cmd_recalc_trackfile {
         if ($+{year} && $+{month}) {
             $file = $self->home->file($+{year},$+{month},$file)->stringify;
             unless (-e $file) {
-                say "Cannot find file ".$self->trackfile;
+                error_message("Cannot find file %s",$self->trackfile);
                 exit;
             }
         }
@@ -219,7 +278,7 @@ sub cmd_init {
     my $self = shift;
     my $cwd = Path::Class::Dir->new->absolute;
     if (-e $cwd->file('.tracker.json')) {
-        say "This directory is already set up.\nTry 'tracker show_config' to see the current aggregated config.";
+        error_message("This directory is already set up.\nTry 'tracker show_config' to see the current aggregated config.");
         exit;
     }
 
@@ -260,7 +319,6 @@ sub cmd_commands {
     }
     exit;
 }
-
 sub _load_attribs_worked {
     my ($class, $meta) = @_;
     $meta->add_attribute('from'=>{
@@ -278,16 +336,33 @@ sub _load_attribs_worked {
         lazy_build=>1,
     });
     $meta->add_attribute('this'=>{
-        isa=>'Str',
+        isa=>'TT::Duration',
         is=>'ro',
     });
     $meta->add_attribute('last'=>{
-        isa=>'Str',
+        isa=>'TT::Duration',
         is=>'ro',
     });
-    $meta->add_attribute('projects'=>{
-        isa=>'ArrayRef[Str]',
+    $meta->add_attribute('fprojects'=>{
+        isa=>'ArrayRef',
         is=>'ro',
+        documentation=>'Filter by project',
+    });
+    $meta->add_attribute('ftags'=>{
+        isa=>'ArrayRef',
+        is=>'ro',
+        documentation=>'Filter by tag',
+    });
+
+}
+sub _load_attribs_list {
+    my ($class, $meta) = @_;
+    $class->_load_attribs_worked($meta);
+    $meta->add_attribute('detail'=>{
+        isa=>'Bool',
+        is=>'ro',
+        default=>0,
+        documentation=>'Be detailed',
     });
 }
 sub _load_attribs_report {
@@ -296,13 +371,15 @@ sub _load_attribs_report {
     $meta->add_attribute('detail'=>{
         isa=>'Bool',
         is=>'ro',
+        default=>0,
         documentation=>'Be detailed',
     });
-    $meta->add_attribute('verbose'=>{
-        isa=>'Bool',
-        is=>'ro',
-        documentation=>'Be verbose',
-    });
+#    $meta->add_attribute('verbose'=>{
+#        isa=>'Bool',
+#        is=>'ro',
+#        default=>0,
+#        documentation=>'Be verbose',
+#    });
 }
 
 sub _load_attribs_start {
@@ -328,7 +405,7 @@ sub _load_attribs_start {
 
 sub _build_project {
     my $self = shift;
-    return $self->_currentproject;
+    return $self->_current_project;
 }
 
 *_load_attribs_append = \&_load_attribs_start;
@@ -347,17 +424,20 @@ sub _load_attribs_recalc_trackfile {
 sub _build_from {
     my $self = shift;
     if (my $last = $self->last) {
-        return $self->now->truncate( to => $last)->subtract( $last.'s' => 1 );
+        return now()->truncate( to => $last)->subtract( $last.'s' => 1 );
     }
     elsif (my $this = $self->this) {
-        return $self->now->truncate( to => $this);
+        return now()->truncate( to => $this);
     }
 }
 
 sub _build_to {
     my $self = shift;
-    my $dur = $self->this || $self->last;
-    return $self->from->clone->add( $dur.'s' => 1 );
+    
+    my $date = $self->this || $self->last;
+    return $self->from->clone
+       ->add( $date.'s' => 1 )
+       ->subtract( seconds => 1);
 }
 
 no Moose::Role;
@@ -373,7 +453,7 @@ App::TimeTracker::Command::Core - App::TimeTracker Core commands
 
 =head1 VERSION
 
-version 2.009
+version 2.010
 
 =head1 CORE COMMANDS
 
@@ -386,11 +466,9 @@ More commands are implemented in various plugins. Plugins might also alter and/o
 
 Start tracking the current project now. Automatically stop the previous task, if there was one.
 
-B<Options:>
+=head3 Options:
 
-=over
-
-=item --at TT::DateTime
+=head4 --at TT::DateTime
 
     ~/perl/Your-Project$ tracker start --at 12:42
     ~/perl/Your-Project$ tracker start --at '2011-02-26 12:42'
@@ -398,26 +476,24 @@ B<Options:>
 Start at the specified time/datetime instead of now. If only a time is
 provided, the day defaults to today. See L<TT::DateTime> in L<App::TimeTracker>.
 
-=item --project SomeProject
+=head4 --project SomeProject
 
   ~/perl/Your-Project$ tracker start --project SomeProject
 
 Use the specified project instead of the one determined by the current
 working directory.
 
-=item --description 'some prosa'
+=head4 --description 'some prosa'
 
   ~/perl/Your-Project$ tracker start --description "Solving nasty bug"
 
 Supply some descriptive text to the task. Might be used by reporting plugins etc.
 
-=item --tags RT1234 [Multiple]
+=head4 --tags RT1234 [Multiple]
 
   ~/perl/Your-Project$ tracker start --tag RT1234 --tag testing
 
 A list of tags to add to the task. Can be used by reporting plugins.
-
-=back
 
 =head2 stop
 
@@ -426,15 +502,11 @@ A list of tags to add to the task. Can be used by reporting plugins.
 
 Stop tracking the current project now.
 
-B<Options:>
+=head3 Options
 
-=over
-
-=item --at TT::DateTime
+=head4 --at TT::DateTime
 
 Stop at the specified time/datetime instead of now.
-
-=back
 
 =head2 continue
 
@@ -455,7 +527,9 @@ Example:
     ~$ tracker continue
     Started working on ExplainContinue (testing) at 13:58
 
-B<Options:> same as L<start>
+=head3 Options:
+
+same as L<start>
 
 =head2 append 
 
@@ -478,7 +552,9 @@ Example:
     ~$ tracker append --tag RT7890
     Started working on ExplainAppend (RT7890) at 14:46
 
-B<Options:> same as L<start>
+=head3 Options:
+
+same as L<start>
 
 =head2 current
 
@@ -487,7 +563,7 @@ B<Options:> same as L<start>
 
 Display what you're currently working on, and for how long.
 
-B<Options:> none
+=head3 No options
 
 =head2 worked
 
@@ -496,38 +572,34 @@ B<Options:> none
 Report the total time worked in the given time span, maybe limited to
 some projects.
 
-B<Options:>
+=head3 Options:
 
-=over
-
-=item --from TT::DateTime [REQUIRED (or use --this/--last)]
+=head4 --from TT::DateTime [REQUIRED (or use --this/--last)]
 
 Begin of reporting iterval.
 
-=item --to TT::DateTime [REQUIRED (or use --this/--last)]
+=head4 --to TT::DateTime [REQUIRED (or use --this/--last)]
 
 End of reporting iterval.
 
-=item --this [day, week, month, year]
+=head4 --this [day, week, month, year]
 
 Automatically set C<--from> and C<--to> to the calculated values
 
     ~/perl/Your-Project$ tracker worked --this week
     17:01:50
 
-=item --last [day, week, month, year]
+=head4 --last [day, week, month, year]
 
 Automatically set C<--from> and C<--to> to the calculated values
 
     ~/perl/Your-Project$ tracker worked --last day (=yesterday)
     06:39:12
 
-=item --project SomeProject [Multiple]
+=head4 --project SomeProject [Multiple]
 
     ~$ tracker worked --last day --project SomeProject
     02:04:47
-
-=back
 
 =head2 report
 
@@ -536,25 +608,21 @@ Automatically set C<--from> and C<--to> to the calculated values
 Print out a detailed report of what you did. All worked times are
 summed up per project (and optionally per tag)
 
-B<Options:>
+=head3 Options:
 
 The same options as for L<worked>, plus:
 
-=over
-
-=item --detail
+=head4 --detail
 
     ~/perl/Your-Project$ tracker report --last month --detail
 
 Also calc sums per tag.
 
-=item --verbose
+=head4 --verbose
 
     ~/perl/Your-Project$ tracker report --last month --verbose
 
 Lists all found trackfiles and their respective duration before printing out the report.
-
-=back
 
 =head2 init
 
@@ -562,7 +630,7 @@ Lists all found trackfiles and their respective duration before printing out the
 
 Create a rather empty F<.tracker.json> config file in the current directory.
 
-B<Options:> none
+=head3 No options
 
 =head2 show_config
 
@@ -570,15 +638,15 @@ B<Options:> none
 
 Dump the config that's valid for the current directory. Might be handy when setting up plugins etc.
 
-B<Options:> none
+=head3 No options
 
 =head2 plugins
 
     ~/perl/Your-Project$ tracker plugins
 
-List all installed plugins (i.e. stuff in C<App::TimeTracker::Command::*)
+List all installed plugins (i.e. stuff in C<App::TimeTracker::Command::*>)
 
-B<Options:> none
+=head3 No options
 
 =head2 recalc_trackfile
 
@@ -588,17 +656,13 @@ Recalculates the duration stored in an old trackfile. Might be useful
 after a manual update in a trackfile. Might be unneccessary in the
 future, as soon as task duration is always calculated lazyly.
 
-B<Options:>
+=head3 Options:
 
-=over
-
-=item --trackfile name_of_trackfile.trc REQUIRED
+=head4 --trackfile name_of_trackfile.trc REQUIRED
 
 Only the name of the trackfile is required, but you can also pass in
 the absolute path to the file. Broken trackfiles are sometimes
 reported during L<report>.
-
-=back
 
 =head2 commands
 
@@ -606,7 +670,7 @@ reported during L<report>.
 
 List all available commands, based on your current config.
 
-B<Options:> none
+=head3 No options
 
 =head1 AUTHOR
 

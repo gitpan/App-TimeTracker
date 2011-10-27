@@ -19,12 +19,12 @@ my %module_build_args = (
   'configure_requires' => {
     'Module::Build' => '0.3601'
   },
-  'dist_abstract' => 'Track time spend on projects from the commandline',
+  'dist_abstract' => 'time tracking for impatient and lazy command line lovers',
   'dist_author' => [
     'Thomas Klausner <domm@cpan.org>'
   ],
   'dist_name' => 'App-TimeTracker',
-  'dist_version' => '2.009',
+  'dist_version' => '2.010',
   'license' => 'perl',
   'module_name' => 'App::TimeTracker',
   'recommends' => {},
@@ -36,6 +36,7 @@ my %module_build_args = (
     'DateTime::Format::Duration' => '0',
     'DateTime::Format::ISO8601' => '0',
     'Digest::SHA1' => '0',
+    'Exporter' => '0',
     'File::Copy' => '0',
     'File::Find::Rule' => '0',
     'File::HomeDir' => '0',
@@ -54,10 +55,14 @@ my %module_build_args = (
     'Path::Class::Iterator' => '0',
     'RT::Client::REST' => '0',
     'RT::Client::REST::Ticket' => '0',
+    'Scalar::Util' => '0',
+    'Term::ANSIColor' => '0',
+    'Text::Table' => '0',
     'Try::Tiny' => '0',
     'Unicode::Normalize' => '0',
     'User::pwent' => '0',
     'namespace::autoclean' => '0',
+    'parent' => '0',
     'perl' => '5.010'
   },
   'script_files' => [

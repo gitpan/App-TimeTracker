@@ -6,6 +6,7 @@ use 5.010;
 # ABSTRACT: App::TimeTracker SyncViaGit plugin
 
 use Moose::Role;
+use App::TimeTracker::Utils qw(now);
 use Git::Repository;
 
 sub cmd_sync {
@@ -13,12 +14,12 @@ sub cmd_sync {
 
     my $r = Git::Repository->new( work_tree => $self->home );
 
-    my @new = $r->run('ls-files' =>'-om');
+    my @new = $r->run('ls-files' =>'-om','--exclude-standard');
     foreach my $changed (@new) {
         $r->run(add=>$changed);
     }
-    
-    $r->run(commit => '-m','synced on '.$self->now);
+
+    $r->run(commit => '-m','synced on '.now());
 
     foreach my $cmd (qw(pull push)) {
         my $c = $r->command( $cmd );
@@ -40,7 +41,7 @@ App::TimeTracker::Command::SyncViaGit - App::TimeTracker SyncViaGit plugin
 
 =head1 VERSION
 
-version 2.009
+version 2.010
 
 =head1 DESCRIPTION
 
@@ -52,16 +53,16 @@ L<Git::Repository>).
 
 =head1 CONFIGURATION
 
-=over
+=head2 plugins
 
-=item * Add C<SyncViaGit> to the list of plugins. I usually put it into my top-level config file (i.e. F<~/.TimeTracker/tracker.json>).
+Add C<SyncViaGit> to the list of plugins. I usually put it into my top-level config file (i.e. F<~/.TimeTracker/tracker.json>).
 
-=item * Turn F<~/.TimeTracker> into a git repository and make sure you
+=head2 other setup
+
+Turn F<~/.TimeTracker> into a git repository and make sure you
 can pull/push this repo from all your machines. I do not recommend a
 public git hoster, as the information contained in your tracking files
 might be rather private.
-
-=back
 
 =head1 NEW COMMANDS
 
@@ -76,7 +77,7 @@ then pushes to remote.
 If you get conflicts (which can happen from time to time, especially
 if you forget to C<stop>), fix them and call C<tracker sync> again.
 
-B<Options:> none
+=head3 No options
 
 =head1 CHANGES TO OTHER COMMANDS
 
