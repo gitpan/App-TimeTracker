@@ -62,7 +62,7 @@ App::TimeTracker::Command::Post2IRC - App::TimeTracker plugin for posting to IRC
 
 =head1 VERSION
 
-version 2.010
+version 2.011
 
 =head1 DESCRIPTION
 
