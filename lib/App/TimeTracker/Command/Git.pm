@@ -89,7 +89,7 @@ App::TimeTracker::Command::Git - App::TimeTracker Git plugin
 
 =head1 VERSION
 
-version 2.011
+version 2.012
 
 =head1 DESCRIPTION
 

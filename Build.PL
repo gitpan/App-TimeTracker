@@ -24,7 +24,7 @@ my %module_build_args = (
     'Thomas Klausner <domm@cpan.org>'
   ],
   'dist_name' => 'App-TimeTracker',
-  'dist_version' => '2.011',
+  'dist_version' => '2.012',
   'license' => 'perl',
   'module_name' => 'App::TimeTracker',
   'recommends' => {},

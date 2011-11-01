@@ -171,7 +171,7 @@ App::TimeTracker::Command::RT - App::TimeTracker RT plugin
 
 =head1 VERSION
 
-version 2.011
+version 2.012
 
 =head1 DESCRIPTION
 
