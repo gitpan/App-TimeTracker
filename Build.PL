@@ -24,7 +24,7 @@ my %module_build_args = (
     'Thomas Klausner <domm@cpan.org>'
   ],
   'dist_name' => 'App-TimeTracker',
-  'dist_version' => '2.012',
+  'dist_version' => '2.013',
   'license' => 'perl',
   'module_name' => 'App::TimeTracker',
   'recommends' => {},
@@ -59,6 +59,7 @@ my %module_build_args = (
     'Term::ANSIColor' => '0',
     'Text::Table' => '0',
     'Try::Tiny' => '0',
+    'URI::Escape' => '0',
     'Unicode::Normalize' => '0',
     'User::pwent' => '0',
     'namespace::autoclean' => '0',
@@ -66,7 +67,8 @@ my %module_build_args = (
     'perl' => '5.010'
   },
   'script_files' => [
-    'bin/tracker'
+    'bin/tracker',
+    'bin/tracker_bash_autocomplete'
   ]
 );
 

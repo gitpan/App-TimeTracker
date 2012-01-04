@@ -50,6 +50,7 @@ requires:
   Term::ANSIColor: 0
   Text::Table: 0
   Try::Tiny: 0
+  URI::Escape: 0
   Unicode::Normalize: 0
   User::pwent: 0
   namespace::autoclean: 0
@@ -58,4 +59,4 @@ requires:
 resources:
   homepage: http://timetracker.plix.at
   repository: git://github.com/domm/App-TimeTracker.git
-version: 2.012
+version: 2.013

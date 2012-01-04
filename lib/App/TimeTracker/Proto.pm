@@ -76,7 +76,6 @@ sub run {
     my $self = shift;
 
     my $config = $self->load_config;
-
     my $class = $self->setup_class($config);
 
     $class->name->new_with_options( {
@@ -110,7 +109,7 @@ sub setup_class {
 
     my $load_attribs_for_command;
     foreach (@ARGV) {
-        if ($commands{$_}) {
+        if (defined $commands{$_}) {
             $load_attribs_for_command='_load_attribs_'.$_;
             last;
         }
@@ -138,17 +137,17 @@ sub load_config {
         if (my $project_config = $projects->{$project}) {
             $self->project($project);
             $dir = Path::Class::Dir->new($project_config);
-        } else {
-            my $error = "Cannot find project: $project\nKnown projects are:\n";
-            foreach (keys %$projects) {
-                $error .= "   ".$_."\n";
-            }
-            error_message($error);
-            exit;
+        }
+        else {
+            say "Unkown project: $project";
+            $self->project($project);
+            $dir = Path::Class::Dir->new('/ttfake',$project);
         }
     }
 
-    WALKUP: while (1) {
+    my $try = 0;
+    $dir = $dir->absolute;
+    WALKUP: while ($try++ < 30) {
         my $config_file = $dir->file('.tracker.json');
         my $this_config;
         if (-e $config_file) {
@@ -234,7 +233,7 @@ App::TimeTracker::Proto - App::TimeTracker Proto Class
 
 =head1 VERSION
 
-version 2.012
+version 2.013
 
 =head1 DESCRIPTION
 
