@@ -64,7 +64,7 @@ App::TimeTracker::Utils - Utility Methods/Functions for App::TimeTracker
 
 =head1 VERSION
 
-version 2.014
+version 2.015
 
 =head1 AUTHOR
 

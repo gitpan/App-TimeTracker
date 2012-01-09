@@ -16,13 +16,11 @@ sub cmd_sync {
 
     my @new = $r->run('ls-files' =>'-om','--exclude-standard');
     foreach my $changed (@new) {
-        say $changed;
         $r->run(add=>$changed);
     }
 
     my @del = $r->run('ls-files' =>'-d','--exclude-standard');
     foreach my $to_del (@del) {
-        say "to del $to_del";
         $r->run(rm=>$to_del);
     }
 
@@ -48,7 +46,7 @@ App::TimeTracker::Command::SyncViaGit - App::TimeTracker SyncViaGit plugin
 
 =head1 VERSION
 
-version 2.014
+version 2.015
 
 =head1 DESCRIPTION
 

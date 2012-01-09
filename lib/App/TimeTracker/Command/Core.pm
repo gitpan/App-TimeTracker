@@ -481,7 +481,7 @@ App::TimeTracker::Command::Core - App::TimeTracker Core commands
 
 =head1 VERSION
 
-version 2.014
+version 2.015
 
 =head1 CORE COMMANDS
 

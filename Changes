@@ -1,5 +1,9 @@
 Revision history for App::TimeTracker
 
+2.015   2012-01-09T20:26:47+0100
+    - SyncViaGit: removed debug messages (Thomas Klausner)
+
+
 2.014   2012-01-04T23:17:20+0100
     - SyncViaGit: proper fix to git-rm deleted files
 
