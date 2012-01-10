@@ -12,6 +12,7 @@ my %module_build_args = (
     'IO::Capture::Stdout' => '0',
     'Module::Build' => '0.3601',
     'Test::File' => '0',
+    'Test::MockTime' => '0',
     'Test::More' => '0',
     'Test::Most' => '0',
     'Test::Trap' => '0'
@@ -24,7 +25,7 @@ my %module_build_args = (
     'Thomas Klausner <domm@cpan.org>'
   ],
   'dist_name' => 'App-TimeTracker',
-  'dist_version' => '2.015',
+  'dist_version' => '2.016',
   'license' => 'perl',
   'module_name' => 'App::TimeTracker',
   'recommends' => {},

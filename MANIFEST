@@ -25,6 +25,7 @@ lib/App/TimeTracker/Proto.pm
 lib/App/TimeTracker/Utils.pm
 t/00-load.t
 t/Command/core.t
+t/Command/rt_73859_daychange.t
 t/Proto/config.t
 t/Proto/run.t
 t/Task/current.t

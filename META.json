@@ -69,6 +69,7 @@
             "File::Temp" : 0,
             "IO::Capture::Stdout" : 0,
             "Test::File" : 0,
+            "Test::MockTime" : 0,
             "Test::More" : 0,
             "Test::Most" : 0,
             "Test::Trap" : 0
@@ -84,6 +85,6 @@
          "web" : "http://github.com/domm/App-TimeTracker"
       }
    },
-   "version" : "2.015"
+   "version" : "2.016"
 }
 

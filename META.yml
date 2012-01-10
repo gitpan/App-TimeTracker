@@ -8,6 +8,7 @@ build_requires:
   IO::Capture::Stdout: 0
   Module::Build: 0.3601
   Test::File: 0
+  Test::MockTime: 0
   Test::More: 0
   Test::Most: 0
   Test::Trap: 0
@@ -59,4 +60,4 @@ requires:
 resources:
   homepage: http://timetracker.plix.at
   repository: git://github.com/domm/App-TimeTracker.git
-version: 2.015
+version: 2.016
