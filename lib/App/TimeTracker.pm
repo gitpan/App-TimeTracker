@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use 5.010;
 
-our $VERSION = "2.016";
+our $VERSION = "2.017";
 # ABSTRACT: time tracking for impatient and lazy command line lovers
 
 use App::TimeTracker::Data::Task;
@@ -43,25 +43,24 @@ coerce 'TT::DateTime'
     my $raw = $_;
     my $dt = DateTime->now;
     $dt->set_time_zone('local');
-
+    $dt->set(second=>0);
     given ($raw) {
         when(/^ $HOUR_RE : $MINUTE_RE $/x) { # "13:42"
-            $dt = DateTime->today;
             $dt->set(hour=>$+{hour}, minute=>$+{minute});
         }
         when(/^ $YEAR_RE [-.]? $MONTH_RE [-.]? $DAY_RE $/x) { # "2010-02-26"
-            $dt = DateTime->today;
             $dt->set(year => $+{year}, month=>$+{month}, day=>$+{day});
+            $dt->truncate(to=>'day');
         }
         when(/^ $YEAR_RE [-.]? $MONTH_RE [-.]? $DAY_RE \s+ $HOUR_RE : $MINUTE_RE $/x) { # "2010-02-26 12:34"
-            $dt = DateTime->new(year => $+{year}, month=>$+{month}, day=>$+{day}, hour=>$+{hour}, minute=>$+{minute});
+            $dt->set(year => $+{year}, month=>$+{month}, day=>$+{day}, hour=>$+{hour}, minute=>$+{minute});
         }
         when(/^ $DAY_RE [-.]? $MONTH_RE [-.]? $YEAR_RE $/x) { # "26-02-2010"
-            $dt = DateTime->today;
             $dt->set(year => $+{year}, month=>$+{month}, day=>$+{day});
+            $dt->truncate(to=>'day');
         }
         when(/^ $DAY_RE [-.]? $MONTH_RE [-.]? $YEAR_RE \s $HOUR_RE : $MINUTE_RE $/x) { # "26-02-2010 12:34"
-            $dt = DateTime->new(year => $+{year}, month=>$+{month}, day=>$+{day}, hour=>$+{hour}, minute=>$+{minute});
+            $dt->set(year => $+{year}, month=>$+{month}, day=>$+{day}, hour=>$+{hour}, minute=>$+{minute});
         }
         default {
             confess "Invalid date format '$raw'";
@@ -242,7 +241,7 @@ App::TimeTracker - time tracking for impatient and lazy command line lovers
 
 =head1 VERSION
 
-version 2.016
+version 2.017
 
 =head1 SYNOPSIS
 

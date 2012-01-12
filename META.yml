@@ -60,4 +60,4 @@ requires:
 resources:
   homepage: http://timetracker.plix.at
   repository: git://github.com/domm/App-TimeTracker.git
-version: 2.016
+version: 2.017

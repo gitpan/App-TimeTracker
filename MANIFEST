@@ -32,6 +32,7 @@ t/Task/current.t
 t/Task/helpers.t
 t/Task/start.t
 t/Task/storage_location.t
+t/TimeTracker/datetime_coerce.t
 t/TimeTracker/find_task_files.t
 t/TimeTracker/helpers.t
 t/testdata/2011/05/20110502-202439_oe1_orf_at.trc
