@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use 5.010;
 
-our $VERSION = "2.017";
+our $VERSION = "2.018";
 # ABSTRACT: time tracking for impatient and lazy command line lovers
 
 use App::TimeTracker::Data::Task;
@@ -11,6 +11,7 @@ use App::TimeTracker::Data::Task;
 use DateTime;
 use Moose;
 use Moose::Util::TypeConstraints;
+use Path::Class qw();
 use Path::Class::Iterator;
 use MooseX::Storage::Format::JSONpm;
 use JSON::XS;
@@ -212,12 +213,23 @@ sub project_tree {
     my $self = shift;
     my $file = $self->home->file('projects.json');
     return unless -e $file && -s $file;
-    my $projects = decode_json($file->slurp);
+    my $decoder = JSON::XS->new->utf8->pretty->relaxed;
+    my $projects = $decoder->decode(scalar $file->slurp);
 
     my %tree;
     my $depth;
     while (($depth++ < 30) && (my ($project,$location) = each %$projects)) {
         $tree{$project} //= {parent=>undef,childs=>{}};
+        # check config file for parent
+        if (-e $location) {
+            my $this_config = $decoder->decode(scalar Path::Class::file($location)->slurp);
+            if (my $parent = $this_config->{parent}) {
+                $tree{$project}->{parent} = $parent;
+                $tree{$parent}->{children}{$project}=1;
+                next;
+            }
+        }
+        # check path for parent
         my @parts = Path::Class::file($location)->parent->parent->dir_list;
         foreach my $dir (@parts) {
             if (my $parent = $projects->{$dir}) {
@@ -231,7 +243,7 @@ sub project_tree {
 
 1;
 
-
+__END__
 
 =pod
 
@@ -241,7 +253,7 @@ App::TimeTracker - time tracking for impatient and lazy command line lovers
 
 =head1 VERSION
 
-version 2.017
+version 2.018
 
 =head1 SYNOPSIS
 
@@ -263,7 +275,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-
-__END__
-

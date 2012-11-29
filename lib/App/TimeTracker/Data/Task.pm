@@ -115,7 +115,8 @@ sub storage_location {
 sub description_short {
     my ($self) = @_;
     my $description = $self->description;
-    
+    return unless $description;
+
     $description =~ s/(.{40}[[:alnum:]]*).+$/$1.../;
     $description =~ s/^(.{50}).+$/$1.../;
     $description =~ s/\.{3,}$/.../;
@@ -182,7 +183,7 @@ sub rounded_minutes {
 __PACKAGE__->meta->make_immutable;
 1;
 
-
+__END__
 
 =pod
 
@@ -192,7 +193,7 @@ App::TimeTracker::Data::Task - App::TimeTracker Task storage
 
 =head1 VERSION
 
-version 2.017
+version 2.018
 
 =head1 DESCRIPTION
 
@@ -210,7 +211,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-
-__END__
-

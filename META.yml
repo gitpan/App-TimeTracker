@@ -7,6 +7,7 @@ build_requires:
   File::Temp: 0
   IO::Capture::Stdout: 0
   Module::Build: 0.3601
+  Module::Pluggable: 0
   Test::File: 0
   Test::MockTime: 0
   Test::More: 0
@@ -15,7 +16,7 @@ build_requires:
 configure_requires:
   Module::Build: 0.3601
 dynamic_config: 0
-generated_by: 'Dist::Zilla version 4.200014, CPAN::Meta::Converter version 2.110440'
+generated_by: 'Dist::Zilla version 4.300025, CPAN::Meta::Converter version 2.120921'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -27,7 +28,8 @@ requires:
   DateTime: 0
   DateTime::Format::Duration: 0
   DateTime::Format::ISO8601: 0
-  Digest::SHA1: 0
+  Digest::SHA: 0
+  Encode: 0
   Exporter: 0
   File::Copy: 0
   File::Find::Rule: 0
@@ -57,7 +59,9 @@ requires:
   namespace::autoclean: 0
   parent: 0
   perl: 5.010
+  strict: 0
+  warnings: 0
 resources:
   homepage: http://timetracker.plix.at
   repository: git://github.com/domm/App-TimeTracker.git
-version: 2.017
+version: 2.018

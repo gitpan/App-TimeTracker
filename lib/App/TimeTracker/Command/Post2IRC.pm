@@ -7,9 +7,10 @@ use 5.010;
 
 use Moose::Role;
 use LWP::UserAgent;
-use Digest::SHA1 qw(sha1_hex);
+use Digest::SHA qw(sha1_hex);
 use URI::Escape;
 use App::TimeTracker::Utils qw(error_message);
+use Encode;
 
 has 'irc_quiet' => (
     is=>'ro',
@@ -44,9 +45,10 @@ sub _post_to_irc {
         . ( $status eq 'start' ? ' is now' : ' stopped' ) 
         . ' working on '
         . $task->say_project_tags;
+    $message = decode_utf8($message);
     my $token = sha1_hex($message, $cfg->{secret});
-    
-    my $url = $cfg->{host}.'?message='.uri_escape($message).'&token='.$token;
+
+    my $url = $cfg->{host}.'?message='.uri_escape_utf8($message).'&token='.$token;
     my $res = $ua->get($url);
     unless ($res->is_success) {
         error_message('Could not post to IRC status via %s: %s',$url,$res->status_line);
@@ -56,7 +58,7 @@ sub _post_to_irc {
 no Moose::Role;
 1;
 
-
+__END__
 
 =pod
 
@@ -66,7 +68,7 @@ App::TimeTracker::Command::Post2IRC - App::TimeTracker plugin for posting to IRC
 
 =head1 VERSION
 
-version 2.017
+version 2.018
 
 =head1 DESCRIPTION
 
@@ -99,7 +101,7 @@ The hostname of the server C<Bot::FromHTTP> is running on. Might also contain a 
 
 A shared secret used to calculate the authentification token. The token is calculated like this:
 
-  my $token = Digest::SHA1::sha1_hex($message, $secret);
+  my $token = Digest::SHA::sha1_hex($message, $secret);
 
 =head1 NEW COMMANDS
 
@@ -132,7 +134,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-
-__END__
-

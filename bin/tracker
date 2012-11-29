@@ -4,12 +4,14 @@ use strict;
 use warnings;
 use App::TimeTracker::Proto;
 
+binmode(STDOUT, ":utf8");
+
 my $app = App::TimeTracker::Proto->new->run;
 
 # ABSTRACT: run App::TimeTracker
 # PODNAME: tracker
 
-
+__END__
 
 =pod
 
@@ -19,7 +21,7 @@ tracker - run App::TimeTracker
 
 =head1 VERSION
 
-version 2.017
+version 2.018
 
 =head1 SYNOPSIS
 
@@ -335,7 +337,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-
-__END__
-

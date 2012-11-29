@@ -54,8 +54,8 @@ sub now {
 }
 1;
 
-
 __END__
+
 =pod
 
 =head1 NAME
@@ -64,7 +64,7 @@ App::TimeTracker::Utils - Utility Methods/Functions for App::TimeTracker
 
 =head1 VERSION
 
-version 2.017
+version 2.018
 
 =head1 AUTHOR
 
@@ -78,4 +78,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
