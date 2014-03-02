@@ -10,6 +10,7 @@ README
 bin/tracker
 bin/tracker_bash_autocomplete
 dist.ini
+foo.ics
 helper/convert_2_003_to_2_004.pl
 helper/convert_legacy_data_to_json.pl
 lib/App/TimeTracker.pm

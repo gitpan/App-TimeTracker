@@ -4,7 +4,7 @@
       "Thomas Klausner <domm@cpan.org>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 4.300025, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "Dist::Zilla version 4.300028, CPAN::Meta::Converter version 2.120921",
    "license" : [
       "perl_5"
    ],
@@ -89,6 +89,6 @@
          "web" : "http://github.com/domm/App-TimeTracker"
       }
    },
-   "version" : "2.018"
+   "version" : "2.019"
 }
 
