@@ -210,7 +210,7 @@ App::TimeTracker::Data::Task - App::TimeTracker Task storage
 
 =head1 VERSION
 
-version 2.019
+version 2.020
 
 =head1 DESCRIPTION
 
